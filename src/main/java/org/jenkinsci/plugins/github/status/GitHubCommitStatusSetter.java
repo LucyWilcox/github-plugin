@@ -10,8 +10,11 @@ import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.BuildStepMonitor;
 import hudson.tasks.Notifier;
 import hudson.tasks.Publisher;
+import hudson.EnvVars;
 import jenkins.tasks.SimpleBuildStep;
+import org.jenkinsci.Symbol;
 import org.jenkinsci.plugins.github.common.CombineErrorHandler;
+import org.jenkinsci.plugins.github.extension.GHEventsSubscriber;
 import org.jenkinsci.plugins.github.extension.status.GitHubCommitShaSource;
 import org.jenkinsci.plugins.github.extension.status.GitHubReposSource;
 import org.jenkinsci.plugins.github.extension.status.GitHubStatusContextSource;
@@ -45,6 +48,7 @@ public class GitHubCommitStatusSetter extends Notifier implements SimpleBuildSte
     private GitHubStatusContextSource contextSource = new DefaultCommitContextSource();
     private GitHubStatusResultSource statusResultSource = new DefaultStatusResultSource();
     private List<StatusErrorHandler> errorHandlers = new ArrayList<>();
+   // private EnvVars env = build.getEn
 
     @DataBoundConstructor
     public GitHubCommitStatusSetter() {
@@ -133,7 +137,20 @@ public class GitHubCommitStatusSetter extends Notifier implements SimpleBuildSte
                         GitHubCommitNotifier_SettingCommitStatus(repo.getHtmlUrl() + "/commit/" + sha)
                 );
 
+                EnvVars env = new EnvVars();
+                env = run.getEnvironment(listener);
+                String policiesInViolation = env.get("BOM_ENTRIES_IN_VIOLATION");
+                if (policiesInViolation != null) {
+                    String policiesInViolationMessage = "Policy violations: " + policiesInViolation;
+                    listener.getLogger().println(
+                            policiesInViolationMessage
+                    );
+                    repo.createCommitStatus(sha, state, backref, policiesInViolationMessage, "Black Duck");
+                }
+
                 repo.createCommitStatus(sha, state, backref, message, contextName);
+
+
             }
 
         } catch (Exception e) {
